@@ -31,7 +31,7 @@ SECRET_KEY = 'django-insecure-2_#ns4&+u=@4ylw&u&hs=9iu(-flmw3$p0=w73xsa+c!hh_44u
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['bengieantony.pythonanywhere.com']
 
 
 # Application definition
@@ -62,7 +62,7 @@ ROOT_URLCONF = 'sme_backend.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'users/templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -84,11 +84,11 @@ WSGI_APPLICATION = 'sme_backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'mysql.connector.django',
-        'NAME': 'kwigckqtqqspuurdlwofnpto',
-        'USER': 'wjbrhksadyxybvnh',
-        'PASSWORD': '^Rc<nV-fVq75>3a6fmvq3-SAAU=vTBOS',
-        'HOST': '102.134.147.233',
-        'PORT': '32764',
+        'NAME': 'bengieAntony$SME',
+        'USER': 'bengieAntony',
+        'PASSWORD': '2cCQRyk55XdR_@4',
+        'HOST': 'bengieAntony.mysql.pythonanywhere-services.com',
+        # 'PORT': '32764',
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
             'autocommit': True,

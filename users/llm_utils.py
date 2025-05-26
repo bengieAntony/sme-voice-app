@@ -1,9 +1,10 @@
 import requests
 import json
+import os
 from django.conf import settings
 from users.models import FinancialRecord
 
-def call_openrouter_and_parse(user, text):
+def call_openrouter_and_parse(user, text, source_entry=None):
     prompt = f"""
 You are a financial assistant. A user has just recorded this transaction using voice:
 "{text}"
@@ -22,62 +23,43 @@ Only return valid JSON. Do not add any text or explanation.
 """
 
     headers = {
-        "Authorization": f"Bearer {settings.OPENROUTER_API_KEY}",
+        "Authorization": f"Bearer {os.getenv('OPENROUTER_API_KEY')}",
         "Content-Type": "application/json",
-        "HTTP-Referer": "http://localhost:8000",  # required by OpenRouter
+        "HTTP-Referer": "http://localhost:8000",
+        "X-Title": "SME-Voice-App"
     }
 
     payload = {
-        "model": "mistral/mistral-7b-instruct",  # you can change to gpt-3.5 or claude
+        "model": "mistralai/devstral-small:free",
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0.2
     }
 
     try:
-        response = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload, timeout=15)
-        response.raise_for_status()  # Raise HTTPError if bad response
-        
-        print("Raw response status:", response.status_code)
-        print("Raw response body:", response.text)
-        
+        response = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload)
         data = response.json()
-        
-        # Check if response contains 'choices'
-        if "choices" not in data or len(data["choices"]) == 0:
-            print("OpenRouter response missing 'choices':", data)
-            return []
-        
         reply = data["choices"][0]["message"]["content"]
-        
-        try:
-            records = json.loads(reply)
-        except json.JSONDecodeError:
-            print("Failed to parse JSON from model reply:", reply)
-            return []
-        
-        # records = eval(reply)  # quick parsing; in production use json.loads with strict checks
+
+        # Clean markdown-style code block
+        reply = reply.strip()
+        if reply.startswith("```json"):
+            reply = reply.replace("```json", "").strip()
+        if reply.endswith("```"):
+            reply = reply[:-3].strip()
+
+        records = json.loads(reply)
 
         saved = []
         for rec in records:
-            try:
-                saved.append(FinancialRecord.objects.create(
-                    user=user,
-                    product_name=rec["product_name"],
-                    quantity=int(rec["quantity"]),
-                    price=float(rec["unit_price"]),
-                    total=int(rec["quantity"]) * float(rec["unit_price"]),
-                    transaction_type=rec["transaction_type"],
-                ))
-            except KeyError as ke:
-                print("Missing expected key in record:", ke)
-            except Exception as e:
-                print("Error saving record:", e)
-                
+            saved.append(FinancialRecord.objects.create(
+                user=user,
+                product_name=rec["product_name"],
+                quantity=rec["quantity"],
+                unit_price=rec["unit_price"],
+                total_price=rec["quantity"] * rec["unit_price"],
+                source_text=source_entry
+            ))
         return saved
-    
-    except requests.exceptions.RequestException as e:
-        print("Request error:", e)
-        return []
 
     except Exception as e:
         print("LLM error:", e)

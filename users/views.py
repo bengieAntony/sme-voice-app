@@ -13,12 +13,22 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.decorators import authentication_classes, permission_classes, api_view
 from .llm_utils import call_openrouter_and_parse
-from .models import FinancialRecord
+from .models import FinancialRecord, SMEUser
 from .serializers import FinancialRecordSerializer
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+import requests
+import os
+from rest_framework.parsers import MultiPartParser
+from rest_framework.decorators import parser_classes
+from django.utils.html import escape
+from rest_framework_simplejwt.tokens import UntypedToken
+from rest_framework.exceptions import AuthenticationFailed
+import jwt
+from django.conf import settings
+
 
 class FinancialRecordsView(APIView):
     permission_classes = [IsAuthenticated]
@@ -62,6 +72,109 @@ def login_view(request):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+# transcribe, translate, extract financial record
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser])
+def audio_process_view(request):
+    language = request.data.get("language")
+    audio_file = request.FILES.get("audio")
+
+    if not language or not audio_file:
+        return Response({"error": "Please provide both 'language' and 'audio' file."},
+                        status=status.HTTP_400_BAD_REQUEST)
+
+    # Sunbird STT API
+    stt_url = "https://api.sunbird.ai/tasks/stt"
+    stt_headers = {
+        "accept": "application/json",
+        "Authorization": f"Bearer {os.getenv('AUTH_TOKEN')}",
+    }
+
+    stt_data = {
+        "language": language,
+        "adapter": language,
+        "whisper": True,
+    }
+
+    stt_files = {
+        "audio": (audio_file.name, audio_file, audio_file.content_type)
+    }
+
+    try:
+        stt_response = requests.post(stt_url, headers=stt_headers, data=stt_data, files=stt_files)
+        stt_result = stt_response.json()
+        transcription = stt_result["audio_transcription"]
+    except Exception as e:
+        return Response({"error": "Failed to transcribe audio", "details": str(e)},
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    # Sunbird Translation API
+    translation_url = "https://api.sunbird.ai/tasks/nllb_translate"
+    translation_headers = {
+        "accept": "application/json",
+        "Authorization": f"Bearer {os.getenv('AUTH_TOKEN')}",
+        "Content-Type": "application/json",
+    }
+
+    translation_payload = {
+        "source_language": language,
+        "target_language": "eng",
+        "text": transcription,
+    }
+
+    try:
+        translation_response = requests.post(
+            translation_url, headers=translation_headers, json=translation_payload
+        )
+        translated_text = translation_response.json()["output"]["translated_text"]
+    except Exception as e:
+        return Response({"error": "Failed to translate text", "details": str(e)},
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    # Save transcription
+    from .models import VoiceTextEntry
+    voice_entry = VoiceTextEntry.objects.create(user=request.user, text=translated_text)
+
+    # Call OpenRouter for financial record parsing
+    from .llm_utils import call_openrouter_and_parse
+    records = call_openrouter_and_parse(request.user, translated_text, voice_entry)
+
+    # Prepare structured output
+    return Response({
+        "original_transcription": transcription,
+        "translated_text": translated_text,
+        "financial_records": [{
+            "product_name": r.product_name,
+            "quantity": r.quantity,
+            "unit_price": float(r.unit_price),
+            "total_price": float(r.total_price),
+            "transaction_type": r.transaction_type
+        } for r in records]
+    }, status=status.HTTP_201_CREATED)
+
+
+def user_sales_view(request):
+    token = request.GET.get('token')
+    if not token:
+        return render(request, 'sales.html', {'error': 'Missing token'})
+
+    try:
+        validated_token = JWTAuthentication().get_validated_token(token)
+        user = JWTAuthentication().get_user(validated_token)
+    except Exception:
+        return render(request, 'sales.html', {'error': 'Invalid or expired token'})
+
+    records = FinancialRecord.objects.filter(user=user).order_by('-created_at')
+
+    return render(request, 'sales.html', {
+        'user': user,
+        'records': records,
+        'error': None
+    })
+
+
 class VoiceTextEntryView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -71,16 +184,16 @@ class VoiceTextEntryView(APIView):
         if serializer.is_valid():
             text = serializer.validated_data['text']
             user = request.user
-            
+
             # Save the raw text
             VoiceTextEntry.objects.create(
                 user=request.user,
                 text=text
             )
-            
+
             # Try extract a financial record
             records = call_openrouter_and_parse(request.user, text)
-            
+
             if records:
                 return Response({
                     "message": "Text saved and financial records extracted",
