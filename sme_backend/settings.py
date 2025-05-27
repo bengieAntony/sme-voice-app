@@ -31,7 +31,7 @@ SECRET_KEY = 'django-insecure-2_#ns4&+u=@4ylw&u&hs=9iu(-flmw3$p0=w73xsa+c!hh_44u
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['bengieantony.pythonanywhere.com']
+ALLOWED_HOSTS = ['sme-voice-app-f12fba22-0c34-4ea9-80c0.renu-01.cranecloud.io']
 
 
 # Application definition
@@ -84,11 +84,11 @@ WSGI_APPLICATION = 'sme_backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'mysql.connector.django',
-        'NAME': 'bengieAntony$SME',
-        'USER': 'bengieAntony',
-        'PASSWORD': '2cCQRyk55XdR_@4',
-        'HOST': 'bengieAntony.mysql.pythonanywhere-services.com',
-        # 'PORT': '32764',
+        'NAME': 'kdqweopiapiylyadeegmglno',
+        'USER': 'ybqlaqedntgmlcyc',
+        'PASSWORD': 'UF#+FJXgO44wt4_Mk684gZmx4ixly_8Y',
+        'HOST': '102.134.147.233',
+        'PORT': '32764',
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
             'autocommit': True,
