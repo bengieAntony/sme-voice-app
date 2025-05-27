@@ -31,7 +31,7 @@ SECRET_KEY = 'django-insecure-2_#ns4&+u=@4ylw&u&hs=9iu(-flmw3$p0=w73xsa+c!hh_44u
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['sme-voice-app-f12fba22-0c34-4ea9-80c0.renu-01.cranecloud.io']
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
