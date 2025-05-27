@@ -83,12 +83,12 @@ WSGI_APPLICATION = 'sme_backend.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'mysql.connector.django',
-        'NAME': 'kdqweopiapiylyadeegmglno',
-        'USER': 'ybqlaqedntgmlcyc',
-        'PASSWORD': 'UF#+FJXgO44wt4_Mk684gZmx4ixly_8Y',
-        'HOST': '102.134.147.233',
-        'PORT': '32764',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.getenv('POSTGRES_DB'),
+        'USER': os.getenv('POSTGRES_USER'),
+        'PASSWORD': os.getenv('POSTGRES_PASSWORD'),
+        'HOST': os.getenv('POSTGRES_HOST'),
+        'PORT': os.getenv('POSTGRES_PORT'),
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
             'autocommit': True,
