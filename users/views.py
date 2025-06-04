@@ -13,7 +13,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.decorators import authentication_classes, permission_classes, api_view
 from .llm_utils import call_openrouter_and_parse
-from .models import FinancialRecord, SMEUser
+from .models import FinancialRecord, SMEUser, AudioUpload
 from .serializers import FinancialRecordSerializer
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
@@ -78,13 +78,24 @@ def login_view(request):
 @permission_classes([IsAuthenticated])
 @parser_classes([MultiPartParser])
 def audio_process_view(request):
-    language = request.data.get("language")
-    audio_file = request.FILES.get("audio")
+    # language = request.data.get("language")
+    # audio_file = request.FILES.get("audio")
 
+    audio_file = request.FILES.get("audio")
+    language = request.data.get("language")
+    user = request.user
+    
     if not language or not audio_file:
         return Response({"error": "Please provide both 'language' and 'audio' file."},
                         status=status.HTTP_400_BAD_REQUEST)
 
+    # Save the audio file to the DB
+    audio_record = AudioUpload.objects.create(
+        user=user,
+        audio_file=audio_file,
+        language=language
+    )
+    
     # Sunbird STT API
     stt_url = "https://api.sunbird.ai/tasks/stt"
     stt_headers = {
@@ -99,7 +110,7 @@ def audio_process_view(request):
     }
 
     stt_files = {
-        "audio": (audio_file.name, audio_file, audio_file.content_type)
+        "audio": (audio_record.audio_file.name, audio_record.audio_file.file, audio_record.audio_file.file.content_type)
     }
 
     try:
