@@ -72,3 +72,13 @@ class CommandTrigger(models.Model):
 
     def __str__(self):
         return self.command_text
+
+class AudioUpload(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    audio_file = models.FileField(upload_to='audio_uploads/')
+    language = models.CharField(max_length=10)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.language} - {self.uploaded_at}"
+
