@@ -110,7 +110,7 @@ def audio_process_view(request):
     }
 
     stt_files = {
-        "audio": (audio_record.audio_file.name, audio_record.audio_file.file, audio_record.audio_file.file.content_type)
+        "audio": (audio_record.audio_file.name, audio_record.audio_file.file, "audio/mpeg")
     }
 
     try:
